@@ -11,6 +11,43 @@ if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental && UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
+const FILTERS = [
+  { label: 'All', value: 'all' },
+  { label: 'Red', value: 'Red' },
+  { label: 'White', value: 'White' },
+  { label: 'Rosé', value: 'Rosé' },
+  { label: 'Sweet White', value: 'Sweet White' },
+];
+
+function FiltersToggle({ active, onChange }: { active: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <View style={styles.filterBar}>
+      <TouchableOpacity onPress={() => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setOpen(o => !o);
+      }}>
+        <Text style={styles.filterLink}>Filters {open ? '▲' : '▼'}</Text>
+      </TouchableOpacity>
+      {open && (
+        <View style={styles.filterList}>
+          {FILTERS.map(f => (
+            <TouchableOpacity
+              key={f.value}
+              style={[styles.filterBtn, active === f.value && styles.filterBtnActive]}
+              onPress={() => onChange(f.value)}
+            >
+              <Text style={[styles.filterBtnText, active === f.value && styles.filterBtnTextActive]}>
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
 function WineAccordion({ wine, onAdd }: {wine: any, onAdd: () => void}) {
   const [expanded, setExpanded] = useState(false);
   // Normalize firebase fields in case the casing differs (e.g. "year" vs "Year", "pairing" vs "Pairing").
@@ -70,6 +107,7 @@ function WineAccordion({ wine, onAdd }: {wine: any, onAdd: () => void}) {
 export default function ShopScreen() {
   const [wines, setWines] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<string>('all');
   const { addToCart } = useContext(CartContext);
 
   useEffect(() => {
@@ -83,23 +121,29 @@ export default function ShopScreen() {
     fetchWines();
   }, []);
 
+  const filtered = filter === 'all' ? wines : wines.filter(w => (w.color ?? w.Color) === filter);
+
   if (loading) return <View style={styles.center}><Text>Loading...</Text></View>;
-  if (wines.length === 0) return <View style={styles.center}><Text>No wine found.</Text></View>;
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Shop</Text>
-      <FlatList
-        data={wines}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <WineAccordion
-            wine={item}
-            onAdd={() => addToCart({ id: item.id, name: item.name, image: item.image })}
-          />
-        )}
-        contentContainerStyle={{ paddingBottom: 32 }}
-      />
+      <FiltersToggle active={filter} onChange={setFilter} />
+      {filtered.length === 0 ? (
+        <View style={styles.center}><Text>No wine found.</Text></View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => (
+            <WineAccordion
+              wine={item}
+              onAdd={() => addToCart({ id: item.id, name: item.name, image: item.image })}
+            />
+          )}
+          contentContainerStyle={{ paddingBottom: 32 }}
+        />
+      )}
     </View>
   );
 }
@@ -117,6 +161,37 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 16,
     alignSelf: 'center',
+  },
+  filterBar: {
+    marginBottom: 12,
+  },
+  filterLink: {
+    color: '#2f95dc',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  filterList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+  },
+  filterBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: '#eaeaea',
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  filterBtnActive: {
+    backgroundColor: '#2f95dc',
+  },
+  filterBtnText: {
+    color: '#333',
+  },
+  filterBtnTextActive: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   accordionContainer: {
     borderWidth: 1,
