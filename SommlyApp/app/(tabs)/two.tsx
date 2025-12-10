@@ -41,7 +41,7 @@ function WineAccordion({ wine, onAdd }: {wine: any, onAdd: () => void}) {
         <View style={styles.accordionContent}>
           
           {wine.color && <Text>Color: {wine.color}</Text>}
-          {description && <Text>Description: {description}</Text>}
+          {description && <Text>"{description}"</Text>}
           {origin && (origin.country || origin.region) && (
             <Text>
               Origin: {origin.country}{origin.region ? `, ${origin.region}` : ''}
