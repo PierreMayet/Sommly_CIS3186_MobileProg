@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, TextInput, Button } from 'react-native';
 import { Text, View } from '@/components/Themed';
+import Colors from '@/constants/Colors';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { app } from '../../firebaseConfig';
 
@@ -47,8 +48,8 @@ export default function ProfileScreen() {
       {user ? (
         <View style={{alignItems: 'center'}}>
           <Text>Logged in as:</Text>
-          <Text style={{fontWeight: 'bold'}}>{user.email}</Text>
-          <Button title="Logout" onPress={handleLogout} />
+          <Text style={{fontFamily: Colors.typography.bodyBold}}>{user.email}</Text>
+          <Button title="Logout" color={Colors.palette.primary} onPress={handleLogout} />
         </View>
       ) : (
         <View style={{width: '80%'}}>
@@ -57,6 +58,7 @@ export default function ProfileScreen() {
             placeholder="Email"
             value={email}
             autoCapitalize="none"
+            placeholderTextColor={Colors.palette.textSecondary}
             onChangeText={setEmail}
           />
           <TextInput
@@ -65,11 +67,12 @@ export default function ProfileScreen() {
             value={password}
             secureTextEntry
             autoCapitalize="none"
+            placeholderTextColor={Colors.palette.textSecondary}
             onChangeText={setPassword}
           />
-          <Button title="Login" onPress={handleLogin} />
+          <Button title="Login" color={Colors.palette.primary} onPress={handleLogin} />
           <View style={{height: 8}} />
-          <Button title="Register" onPress={handleRegister} />
+          <Button title="Register" color={Colors.palette.secondary} onPress={handleRegister} />
         </View>
       )}
     </View>
@@ -82,19 +85,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
+    backgroundColor: Colors.light.background,
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: Colors.typography.heading,
     marginBottom: 20,
   },
   input: {
     width: '100%',
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: Colors.light.border,
     borderRadius: 4,
     padding: 8,
     marginBottom: 12,
-    backgroundColor: 'white',
+    backgroundColor: Colors.light.card,
+    color: Colors.palette.textPrimary,
   },
 });

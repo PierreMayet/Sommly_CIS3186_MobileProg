@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { StyleSheet, Image, FlatList } from 'react-native';
 import { Text, View } from '@/components/Themed';
+import Colors from '@/constants/Colors';
 import { CartContext } from '../../context/CartContext';
 
 export default function CartScreen() {
@@ -38,11 +39,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'stretch',
     padding: 16,
-    backgroundColor: 'white',
+    backgroundColor: Colors.light.background,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: Colors.typography.heading,
     marginBottom: 16,
     alignSelf: 'center',
   },
@@ -50,20 +51,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: Colors.light.border,
     borderRadius: 8,
     marginBottom: 12,
-    backgroundColor: '#fafafa',
+    backgroundColor: Colors.light.card,
     padding: 10,
   },
   wineImage: {
     width: 60,
     height: 60,
     borderRadius: 8,
-    backgroundColor: '#e2e2e2',
+    backgroundColor: Colors.light.muted,
   },
   wineName: {
-    fontWeight: 'bold',
+    fontFamily: Colors.typography.subheading,
     fontSize: 18,
     marginBottom: 8,
   },

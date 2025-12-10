@@ -4,6 +4,7 @@ import { Text, View } from '@/components/Themed';
 import { getFirestore, collection, getDocs } from 'firebase/firestore';
 import { app } from '../../firebaseConfig';
 import { CartContext } from '../../context/CartContext';
+import Colors from '@/constants/Colors';
 
 const db = getFirestore(app);
 
@@ -91,7 +92,7 @@ function WineAccordion({ wine, onAdd }: {wine: any, onAdd: () => void}) {
           {Array.isArray(pairings) && pairings.length > 0 && (
             <RNView style={{flexDirection:'row',flexWrap:'wrap',marginTop:4}}>
               {pairings.map((p:string,i:number) => (
-                <RNView key={i} style={{backgroundColor:'#eee',borderRadius:12,paddingHorizontal:10,paddingVertical:3,marginRight:5,marginBottom:4}}>
+                <RNView key={i} style={{backgroundColor: Colors.light.muted,borderRadius:12,paddingHorizontal:10,paddingVertical:3,marginRight:5,marginBottom:4}}>
                   <Text style={{fontSize:13}}>{p}</Text>
                 </RNView>
               ))}
@@ -154,11 +155,11 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     justifyContent: 'flex-start',
     padding: 16,
-    backgroundColor: 'white',
+    backgroundColor: Colors.light.background,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: Colors.typography.heading,
     marginBottom: 16,
     alignSelf: 'center',
   },
@@ -166,8 +167,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   filterLink: {
-    color: '#2f95dc',
-    fontWeight: 'bold',
+    color: Colors.palette.primary,
+    fontFamily: Colors.typography.bodyBold,
     fontSize: 16,
   },
   filterList: {
@@ -179,26 +180,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
-    backgroundColor: '#eaeaea',
+    backgroundColor: Colors.light.muted,
     marginRight: 8,
     marginBottom: 8,
   },
   filterBtnActive: {
-    backgroundColor: '#2f95dc',
+    backgroundColor: Colors.palette.primary,
   },
   filterBtnText: {
-    color: '#333',
+    color: Colors.palette.textPrimary,
   },
   filterBtnTextActive: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: Colors.light.card,
+    fontFamily: Colors.typography.bodyBold,
   },
   accordionContainer: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: Colors.light.border,
     borderRadius: 8,
     marginBottom: 12,
-    backgroundColor: '#fafafa',
+    backgroundColor: Colors.light.card,
     overflow: 'hidden',
   },
   accordionHeader: {
@@ -210,22 +211,22 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 8,
-    backgroundColor: '#e2e2e2',
+    backgroundColor: Colors.light.muted,
   },
   wineName: {
-    fontWeight: 'bold',
+    fontFamily: Colors.typography.subheading,
     fontSize: 18,
   },
   expandIcon: {
     fontSize: 36,
-    fontWeight: 'bold',
-    color: '#444',
+    fontFamily: Colors.typography.bodyBold,
+    color: Colors.palette.secondary,
     marginLeft: 15,
   },
   accordionContent: {
     padding: 14,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: Colors.light.border,
   },
   center: {
     flex: 1, alignItems: 'center', justifyContent: 'center',

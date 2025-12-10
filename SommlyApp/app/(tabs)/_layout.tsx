@@ -27,6 +27,9 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarInactiveTintColor: Colors.palette.textSecondary,
+        tabBarStyle: { backgroundColor: Colors[colorScheme ?? 'light'].card, borderTopColor: Colors[colorScheme ?? 'light'].border },
+        tabBarLabelStyle: { fontFamily: Colors.typography.body },
         headerShown: useClientOnlyValue(false, true),
       }}>
       <Tabs.Screen
@@ -59,10 +62,10 @@ export default function TabLayout() {
               <TabBarIcon name="shopping-cart" color={color} />
               {cartSize > 0 && (
                 <RNView style={{
-                  position:'absolute', right:-8, top:-4, minWidth:18, height:18, borderRadius:9, backgroundColor:'red',
+                  position:'absolute', right:-8, top:-4, minWidth:18, height:18, borderRadius:9, backgroundColor: Colors.palette.primary,
                   justifyContent:'center', alignItems:'center', paddingHorizontal:2
                 }}>
-                  <Text style={{color:'white', fontSize:12,fontWeight:'bold'}}>{cartSize}</Text>
+                  <Text style={{color: Colors.light.card, fontSize:12,fontWeight:'bold', fontFamily: Colors.typography.bodyBold}}>{cartSize}</Text>
                 </RNView>
               )}
             </RNView>
