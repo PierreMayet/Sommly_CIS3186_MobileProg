@@ -2,11 +2,12 @@ import React from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { Link, Tabs } from 'expo-router';
-import { Pressable } from 'react-native';
+import { Pressable, View as RNView, Text } from 'react-native';
 
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { CartContext } from '../../context/CartContext';
 
 // TabBarIcon générique avec possibilité de passer un composant d'icône
 function TabBarIcon(props: {
@@ -20,6 +21,7 @@ function TabBarIcon(props: {
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { cartSize } = React.useContext(CartContext);
 
   return (
     <Tabs
@@ -52,7 +54,19 @@ export default function TabLayout() {
         name="cart"
         options={{
           title: 'Cart',
-          tabBarIcon: ({ color }) => <TabBarIcon name="shopping-cart" color={color} />, 
+          tabBarIcon: ({ color }) => (
+            <RNView>
+              <TabBarIcon name="shopping-cart" color={color} />
+              {cartSize > 0 && (
+                <RNView style={{
+                  position:'absolute', right:-8, top:-4, minWidth:18, height:18, borderRadius:9, backgroundColor:'red',
+                  justifyContent:'center', alignItems:'center', paddingHorizontal:2
+                }}>
+                  <Text style={{color:'white', fontSize:12,fontWeight:'bold'}}>{cartSize}</Text>
+                </RNView>
+              )}
+            </RNView>
+          ),
         }}
       />
       <Tabs.Screen
