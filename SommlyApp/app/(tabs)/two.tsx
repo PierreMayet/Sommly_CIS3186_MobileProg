@@ -18,6 +18,7 @@ const FILTERS = [
   { label: 'White', value: 'White' },
   { label: 'Rosé', value: 'Rosé' },
   { label: 'Sweet White', value: 'Sweet White' },
+  { label: 'Champagne', value: 'Champagne' },
 ];
 
 function FiltersToggle({ active, onChange }: { active: string; onChange: (v: string) => void }) {
