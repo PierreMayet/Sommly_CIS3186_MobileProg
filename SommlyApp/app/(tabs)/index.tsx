@@ -9,25 +9,26 @@ export default function HomeScreen() {
   return (
     <ScrollView style={styles.scrollContainer}>
       <View style={styles.container}>
-        {/* Image principale */}
+
         <Image
           source={{
-            uri: 'https://images.unsplash.com/photo-1510626176961-4b57d4fbad03',
+            uri: 'https://legardemangerdusud.com/wp-content/uploads/2024/06/1718769825_route-des-vins-de-provence-escales-degustatives-et-panoramas-enchanteurs.jpg',
           }}
           style={styles.heroImage}
           resizeMode="cover"
         />
+
         <Text style={styles.title}>Sommly</Text>
         <Text style={styles.subtitle}>
           Discover exceptional wines, carefully selected for every occasion.
         </Text>
 
-        {/* Bouton vers la boutique */}
+
         <Pressable style={styles.button} onPress={() => router.push('/two')}>
           <Text style={styles.buttonText}>Explore the shop</Text>
         </Pressable>
 
-        {/* Section avec images et texte */}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>A curated selection</Text>
           <Text style={styles.sectionText}>
@@ -37,12 +38,24 @@ export default function HomeScreen() {
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageRow}>
             <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1510626176961-4b57d4fbad03' }}
+              source={{ uri: 'https://s3.eu-west-3.amazonaws.com/butler-academy.com/wp-content/uploads/2022/03/26155223/9.jpg' }}
               style={styles.smallImage}
             />
-
+            <Image
+              source={{ uri: 'https://s3.eu-west-3.amazonaws.com/butler-academy.com/wp-content/uploads/2025/11/28155023/image.jpg' }}
+              style={styles.smallImage}
+            />
+            <Image
+              source={{ uri: 'https://www.lepetitsommelier.paris/wp-content/uploads/elementor/thumbs/Comment_en_apprendre_le_maximum_sur_l_univers_du_vin_-pxujzn1u0z9vop41urnsjbiekuca5yinq6w4weonrk.jpg' }}
+              style={styles.smallImage}
+            />
+            <Image
+              source={{ uri: 'https://cdn.pixabay.com/photo/2017/01/04/13/57/wine-1952051_1280.jpg' }}
+              style={styles.smallImage}
+            />
           </ScrollView>
         </View>
+
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Experience and Passion</Text>
@@ -51,14 +64,25 @@ export default function HomeScreen() {
             Enjoy tasting notes, region details, and food pairing tips for every bottle.
           </Text>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageRow}>
-            <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1510626176961-4b57d4fbad03' }}
-              style={styles.smallImage}
-            />
 
-          </ScrollView>
+          <Pressable
+            style={styles.secondaryButton}
+            onPress={() => router.push('/recommendation')}
+          >
+            <Text style={styles.secondaryButtonText}>
+              Discover Sommelier Recommendations
+            </Text>
+          </Pressable>
+
+          <Image
+            source={{
+              uri: 'https://cdn.pixabay.com/photo/2015/10/24/11/09/red-wine-1004255_1280.jpg',
+            }}
+            style={styles.heroImage}
+            resizeMode="cover"
+          />
         </View>
+
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Our Promise</Text>
@@ -67,15 +91,14 @@ export default function HomeScreen() {
             and personalized recommendations for every wine lover.
           </Text>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageRow}>
-            <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1510626176961-4b57d4fbad03' }}
-              style={styles.smallImage}
-            />
-
-          </ScrollView>
+          <Image
+            source={{
+              uri: 'https://cdn.pixabay.com/photo/2014/11/22/18/38/christmas-background-541922_1280.jpg',
+            }}
+            style={styles.heroImage}
+            resizeMode="cover"
+          />
         </View>
-        
       </View>
     </ScrollView>
   );
@@ -146,4 +169,22 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginRight: 12,
   },
+
+secondaryButton: {
+  alignSelf: 'center',
+  backgroundColor: Colors.palette.primary, 
+  paddingVertical: 14,
+  paddingHorizontal: 24,
+  borderRadius: 30,
+  marginBottom: 24,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+secondaryButtonText: {
+  color: Colors.light.card, 
+  fontSize: 16,
+  fontFamily: Colors.typography.bodyBold,
+  textAlign: 'center',
+},
+
 });
