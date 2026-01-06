@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { StyleSheet, FlatList, Image, Button } from 'react-native';
+import { StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import Colors from '@/constants/Colors';
 import { getFirestore, collection, getDocs } from 'firebase/firestore';
@@ -66,8 +66,8 @@ export default function SommelierScreen() {
           </Text>
         )}
 
-        <Button
-          title="Add to Cart"
+        <TouchableOpacity
+          style={styles.addButton}
           onPress={() =>
             addToCart({
               id: wine.id,
@@ -75,7 +75,9 @@ export default function SommelierScreen() {
               image: wine.image,
             })
           }
-        />
+        >
+          <Text style={styles.addButtonText}>Ajouter au panier</Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -167,5 +169,18 @@ const styles = StyleSheet.create({
     color: Colors.palette.secondary,
     marginBottom: 12,
     textAlign: 'center',
+  },
+  addButton: {
+    backgroundColor: Colors.palette.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  addButtonText: {
+    color: Colors.light.card,
+    fontSize: 16,
+    fontFamily: Colors.typography.bodyBold,
   },
 });
