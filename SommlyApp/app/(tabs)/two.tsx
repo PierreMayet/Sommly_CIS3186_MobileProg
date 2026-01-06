@@ -158,7 +158,7 @@ function WineAccordion({ wine, onAdd }: {wine: any, onAdd: () => void}) {
             style={styles.addButton}
             onPress={onAdd}
           >
-            <Text style={styles.addButtonText}>Ajouter au panier</Text>
+            <Text style={styles.addButtonText}>Add to cart</Text>
           </TouchableOpacity>
         </View>
       )}
