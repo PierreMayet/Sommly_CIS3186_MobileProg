@@ -1,10 +1,30 @@
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Image, ScrollView, Pressable } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import Colors from '@/constants/Colors';
 import { useRouter } from 'expo-router';
 
+// --- AJOUTS POUR L'IOT ---
+import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
+import { app } from '../../firebaseConfig';
+const db = getFirestore(app);
+// -------------------------
+
 export default function HomeScreen() {
   const router = useRouter();
+
+  // --- LOGIQUE IOT (Lecture en temps réel) ---
+  const [cellarData, setCellarData] = useState({ temperature: '--', humidity: '--' });
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "cellar_sensors", "sensor_01"), (snapshot) => {
+      if (snapshot.exists()) {
+        setCellarData(snapshot.data() as any);
+      }
+    });
+    return () => unsub();
+  }, []);
+  // --------------------------------------------
 
   return (
     <ScrollView style={styles.scrollContainer}>
@@ -23,11 +43,28 @@ export default function HomeScreen() {
           Discover exceptional wines, carefully selected for every occasion.
         </Text>
 
-
         <Pressable style={styles.button} onPress={() => router.push('/two')}>
           <Text style={styles.buttonText}>Explore the shop</Text>
         </Pressable>
 
+        {/* --- BLOC IOT : SMART CELLAR STATUS --- */}
+        <View style={styles.iotCard}>
+          <View style={styles.iotHeader}>
+            <Text style={styles.iotTitle}>🍷 Smart Cellar Status</Text>
+            <View style={styles.liveDot} />
+          </View>
+          <View style={styles.iotStatsRow}>
+            <View style={styles.iotStatBox}>
+              <Text style={styles.iotStatLabel}>TEMPERATURE</Text>
+              <Text style={styles.iotStatValue}>{cellarData.temperature}°C</Text>
+            </View>
+            <View style={styles.iotStatBox}>
+              <Text style={styles.iotStatLabel}>HUMIDITY</Text>
+              <Text style={styles.iotStatValue}>{cellarData.humidity}%</Text>
+            </View>
+          </View>
+          <Text style={styles.iotStatusText}>● Real-time monitoring enabled</Text>
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>A curated selection</Text>
@@ -56,14 +93,12 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Experience and Passion</Text>
           <Text style={styles.sectionText}>
             Our sommeliers guide you to the perfect wine for any moment.
             Enjoy tasting notes, region details, and food pairing tips for every bottle.
           </Text>
-
 
           <Pressable
             style={styles.secondaryButton}
@@ -82,7 +117,6 @@ export default function HomeScreen() {
             resizeMode="cover"
           />
         </View>
-
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Our Promise</Text>
@@ -137,13 +171,70 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 40,
     borderRadius: 30,
-    marginBottom: 36,
+    marginBottom: 24, // Réduit un peu pour laisser de la place à la carte IoT
   },
   buttonText: {
     color: Colors.light.card,
     fontSize: 16,
     fontFamily: Colors.typography.bodyBold,
   },
+  // --- NOUVEAUX STYLES IOT ---
+  iotCard: {
+    width: '100%',
+    backgroundColor: '#fdf7f7',
+    padding: 20,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#eee',
+    marginBottom: 36,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    elevation: 3,
+  },
+  iotHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  iotTitle: {
+    fontSize: 18,
+    fontFamily: Colors.typography.heading,
+    color: Colors.palette.primary,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4CAF50',
+  },
+  iotStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  iotStatBox: {
+    alignItems: 'center',
+  },
+  iotStatLabel: {
+    fontSize: 10,
+    fontFamily: Colors.typography.bodyBold,
+    color: '#999',
+    letterSpacing: 1,
+  },
+  iotStatValue: {
+    fontSize: 26,
+    fontFamily: Colors.typography.heading,
+    color: Colors.palette.textPrimary,
+  },
+  iotStatusText: {
+    fontSize: 11,
+    textAlign: 'center',
+    color: '#4CAF50',
+    marginTop: 12,
+    fontFamily: Colors.typography.bodyBold,
+  },
+  // ---------------------------
   section: {
     width: '100%',
     marginBottom: 36,
@@ -169,22 +260,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginRight: 12,
   },
-
-secondaryButton: {
-  alignSelf: 'center',
-  backgroundColor: Colors.palette.primary, 
-  paddingVertical: 14,
-  paddingHorizontal: 24,
-  borderRadius: 30,
-  marginBottom: 24,
-  justifyContent: 'center',
-  alignItems: 'center',
-},
-secondaryButtonText: {
-  color: Colors.light.card, 
-  fontSize: 16,
-  fontFamily: Colors.typography.bodyBold,
-  textAlign: 'center',
-},
-
+  secondaryButton: {
+    alignSelf: 'center',
+    backgroundColor: Colors.palette.primary, 
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 30,
+    marginBottom: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: Colors.light.card, 
+    fontSize: 16,
+    fontFamily: Colors.typography.bodyBold,
+    textAlign: 'center',
+  },
 });
