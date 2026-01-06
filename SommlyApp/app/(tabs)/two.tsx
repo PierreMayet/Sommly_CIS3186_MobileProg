@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { StyleSheet, Image, FlatList, TouchableOpacity, LayoutAnimation, Platform, UIManager, View as RNView, Button } from 'react-native';
+import { StyleSheet, Image, FlatList, TouchableOpacity, LayoutAnimation, Platform, UIManager, View as RNView, Button, TextInput } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import { getFirestore, collection, getDocs } from 'firebase/firestore';
 import { app } from '../../firebaseConfig';
@@ -111,6 +111,7 @@ export default function ShopScreen() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
   const { addToCart } = useContext(CartContext);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchWines = async () => {
@@ -123,13 +124,25 @@ export default function ShopScreen() {
     fetchWines();
   }, []);
 
-  const filtered = filter === 'all' ? wines : wines.filter(w => (w.color ?? w.Color) === filter);
-
+ const filtered = wines.filter(w => {
+    const matchesFilter = filter === 'all' || (w.color ?? w.Color) === filter;
+    const matchesSearch = w.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    return matchesFilter && matchesSearch;
+  });
   if (loading) return <View style={styles.center}><Text>Loading...</Text></View>;
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Shop</Text>
+      <View style={{ marginBottom: 10, paddingHorizontal: 5 }}>
+        <TextInput
+          style={{ height: 40, backgroundColor: '#f0f0f0', borderRadius: 8, paddingHorizontal: 10 }}
+          placeholder="Search for a wine..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
       <FiltersToggle active={filter} onChange={setFilter} />
       {filtered.length === 0 ? (
         <View style={styles.center}><Text>No wine found.</Text></View>
