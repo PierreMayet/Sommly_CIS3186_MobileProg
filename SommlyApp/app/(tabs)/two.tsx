@@ -154,7 +154,12 @@ function WineAccordion({ wine, onAdd }: {wine: any, onAdd: () => void}) {
               ))}
             </RNView>
           )}
-          <Button title="Add to Cart" onPress={onAdd} />
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={onAdd}
+          >
+            <Text style={styles.addButtonText}>Ajouter au panier</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -330,6 +335,19 @@ const styles = StyleSheet.create({
     padding: 14,
     borderTopWidth: 1,
     borderTopColor: Colors.light.border,
+  },
+  addButton: {
+    backgroundColor: Colors.palette.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  addButtonText: {
+    color: Colors.light.card,
+    fontSize: 16,
+    fontFamily: Colors.typography.bodyBold,
   },
   center: {
     flex: 1, alignItems: 'center', justifyContent: 'center',

@@ -7,6 +7,9 @@ import { Lato_400Regular, Lato_700Bold } from "@expo-google-fonts/lato";
 
 import { CartProvider } from "../context/CartContext";
 
+import { Stack } from "expo-router";
+import { StripeProvider } from "@stripe/stripe-react-native";
+
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -35,8 +38,10 @@ export default function RootLayout() {
   }
 
   return (
-    <CartProvider>
-      <Slot />
-    </CartProvider>
+    <StripeProvider publishableKey="pk_test_51SmbsSI0awnRhdBdrBvkCwuOZL6jyGbK6tdqUytYQ2Uz5nvPM8vAKB4NJN2Yz7NkO2NlfCKhfI1HBKbkBK4H4EyF00qQegosXK">
+      <CartProvider>
+        <Slot />
+      </CartProvider>
+    </StripeProvider>
   );
 }
