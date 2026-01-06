@@ -61,7 +61,9 @@ export default function CartScreen() {
           <View style={styles.item}>
             <Image source={{ uri: item.image }} style={styles.wineImage} />
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.wineName}>{item.name}</Text>              <Text style={styles.priceText}>Price: ${item.price}</Text>              <View style={styles.quantityContainer}>
+              <Text style={styles.wineName}>{item.name}</Text>
+              <Text style={styles.priceText}>Price: ${item.price}</Text>              
+              <View style={styles.quantityContainer}>
                 <Pressable onPress={() => removeFromCart(item.id)} style={styles.quantityButton}>
                   <Text style={styles.quantityButtonText}>-</Text>
                 </Pressable>
