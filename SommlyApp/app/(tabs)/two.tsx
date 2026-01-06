@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { StyleSheet, Image, FlatList, TouchableOpacity, LayoutAnimation, Platform, UIManager, View as RNView, Button, TextInput } from 'react-native';
+import { StyleSheet, Image, FlatList, TouchableOpacity, LayoutAnimation, Platform, UIManager, View as RNView, Button, TextInput, ScrollView } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import { getFirestore, collection, getDocs } from 'firebase/firestore';
 import { app } from '../../firebaseConfig';
@@ -21,7 +21,20 @@ const FILTERS = [
   { label: 'Champagne', value: 'Champagne' },
 ];
 
-function FiltersToggle({ active, onChange }: { active: string; onChange: (v: string) => void }) {
+
+function FiltersToggle({
+  active,
+  onChange,
+  pairingOptions,
+  pairingFilter,
+  setPairingFilter
+}: {
+  active: string;
+  onChange: (v: string) => void;
+  pairingOptions: string[];
+  pairingFilter: string[];
+  setPairingFilter: (v: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <View style={styles.filterBar}>
@@ -32,19 +45,61 @@ function FiltersToggle({ active, onChange }: { active: string; onChange: (v: str
         <Text style={styles.filterLink}>Filters {open ? '▲' : '▼'}</Text>
       </TouchableOpacity>
       {open && (
-        <View style={styles.filterList}>
-          {FILTERS.map(f => (
-            <TouchableOpacity
-              key={f.value}
-              style={[styles.filterBtn, active === f.value && styles.filterBtnActive]}
-              onPress={() => onChange(f.value)}
-            >
-              <Text style={[styles.filterBtnText, active === f.value && styles.filterBtnTextActive]}>
-                {f.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <>
+          <View style={styles.filterList}>
+            {FILTERS.map(f => (
+              <TouchableOpacity
+                key={f.value}
+                style={[styles.filterBtn, active === f.value && styles.filterBtnActive]}
+                onPress={() => onChange(f.value)}
+              >
+                <Text style={[styles.filterBtnText, active === f.value && styles.filterBtnTextActive]}>
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {/* Chips des plats scrollables dans le même dropdown */}
+          {pairingOptions.length > 1 && (
+  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginTop:8, marginBottom:6}}>
+    <RNView>
+      {/* Répartit équitablement les chips sur 3 lignes */}
+      {(() => {
+        const chunkSize = Math.ceil(pairingOptions.length / 3);
+        const rows = [
+          pairingOptions.slice(0, chunkSize),
+          pairingOptions.slice(chunkSize, chunkSize * 2),
+          pairingOptions.slice(chunkSize * 2)
+        ];
+        return rows.map((chips, rowIdx) => (
+          <RNView key={rowIdx} style={{flexDirection:'row', marginBottom: rowIdx < 2 ? 3 : 0}}>
+            {chips.map(item => {
+              const isAll = item === 'all';
+              const isChecked = isAll ? pairingFilter.length === 0 : pairingFilter.includes(item);
+              return (
+                <TouchableOpacity
+                  key={item}
+                  style={[
+                    styles.filterBtn,
+                    isChecked && styles.filterBtnActive,
+                    { marginRight: 8, marginBottom: 4 }
+                  ]}
+                  onPress={() => setPairingFilter(item)}
+                >
+                  <Text style={[
+                    styles.filterBtnText,
+                    isChecked && styles.filterBtnTextActive
+                  ]}>{isAll ? 'All pairings' : item}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </RNView>
+        ));
+      })()}
+    </RNView>
+  </ScrollView>
+          )}
+        </>
       )}
     </View>
   );
@@ -110,6 +165,8 @@ export default function ShopScreen() {
   const [wines, setWines] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
+  const [pairingFilter, setPairingFilter] = useState<string[]>([]);
+  const [pairingOptions, setPairingOptions] = useState<string[]>([]);
   const { addToCart } = useContext(CartContext);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -118,23 +175,40 @@ export default function ShopScreen() {
       setLoading(true);
       const winesCol = collection(db, 'wines');
       const wineSnapshot = await getDocs(winesCol);
-      setWines(wineSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      const data = wineSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setWines(data);
+      // Extraction dynamique (regroupement et normalisation)
+      const pairingMap = new Map<string, string>();
+      data.forEach((wine: any) => {
+        let pairArr = wine.Pairing || wine.pairings || wine.pairing || [];
+        if (!Array.isArray(pairArr)) pairArr = [];
+        pairArr.forEach((p: string) => {
+          const norm = p.trim().toLowerCase();
+          if (norm && !pairingMap.has(norm)) {
+            pairingMap.set(norm, p.trim());
+          }
+        });
+      });
+      setPairingOptions(['all', ...Array.from(pairingMap.values())]);
       setLoading(false);
     };
     fetchWines();
   }, []);
 
- const filtered = wines.filter(w => {
+  const filtered = (wines as any[]).filter((w: any) => {
     const matchesFilter = filter === 'all' || (w.color ?? w.Color) === filter;
+    let pairArr = (w.Pairing ?? w.pairings ?? w.pairing ?? []);
+    if (!Array.isArray(pairArr)) pairArr = [];
+    // Si aucun pairing n'est coché, on affiche tout (par défaut ou si "All pairings" activé)
+    const matchesPairing =
+      pairingFilter.length === 0 || pairArr.some((p: string) => pairingFilter.includes(p.trim()));
     const matchesSearch = w.name?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    return matchesFilter && matchesSearch;
+    return matchesFilter && matchesPairing && matchesSearch;
   });
   if (loading) return <View style={styles.center}><Text>Loading...</Text></View>;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Shop</Text>
       <View style={{ marginBottom: 10, paddingHorizontal: 5 }}>
         <TextInput
           style={{ height: 40, backgroundColor: '#f0f0f0', borderRadius: 8, paddingHorizontal: 10 }}
@@ -143,7 +217,22 @@ export default function ShopScreen() {
           onChangeText={setSearchQuery}
         />
       </View>
-      <FiltersToggle active={filter} onChange={setFilter} />
+      <FiltersToggle
+        active={filter}
+        onChange={setFilter}
+        pairingOptions={pairingOptions}
+        pairingFilter={pairingFilter}
+        setPairingFilter={(v: string) => {
+          setPairingFilter((prev) => {
+            if (v === 'all') return [];
+            if (prev.includes(v)) {
+              return prev.filter(x => x !== v);
+            } else {
+              return [...prev, v];
+            }
+          });
+        }}
+      />
       {filtered.length === 0 ? (
         <View style={styles.center}><Text>No wine found.</Text></View>
       ) : (
@@ -229,7 +318,7 @@ const styles = StyleSheet.create({
   },
   wineName: {
     fontFamily: Colors.typography.subheading,
-    fontSize: 18,
+    fontSize: 15,
   },
   expandIcon: {
     fontSize: 36,
