@@ -59,6 +59,10 @@ export default function SommelierScreen() {
           </Text>
         )}
 
+        {wine.price && (
+          <Text style={styles.price}>Price: ${wine.price}</Text>
+        )}
+
 
         {pairings.length > 0 && (
           <Text style={styles.pairing}>
@@ -73,10 +77,11 @@ export default function SommelierScreen() {
               id: wine.id,
               name: wine.name,
               image: wine.image,
+              price: wine.price,
             })
           }
         >
-          <Text style={styles.addButtonText}>Add to cart</Text>
+          <Text style={styles.addButtonText}>Add to Cart</Text>
         </TouchableOpacity>
       </View>
     );
@@ -182,5 +187,12 @@ const styles = StyleSheet.create({
     color: Colors.light.card,
     fontSize: 16,
     fontFamily: Colors.typography.bodyBold,
+  },
+  price: {
+    fontSize: 16,
+    fontFamily: Colors.typography.bodyBold,
+    color: Colors.palette.primary,
+    textAlign: 'center',
+    marginBottom: 12,
   },
 });

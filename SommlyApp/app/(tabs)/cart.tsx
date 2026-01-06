@@ -6,15 +6,18 @@ import { CartContext } from '../../context/CartContext';
 import { initPaymentSheet, presentPaymentSheet } from "@stripe/stripe-react-native";
 
 export default function CartScreen() {
-  const { cartItems, removeFromCart } = useContext(CartContext);
+  const { cartItems, removeFromCart, clearCart } = useContext(CartContext);
 
   // --- LOGIQUE PAIEMENT STRIPE ---
   const [ready, setReady] = useState(false);
 
   async function fetchClientSecret() {
+    const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const amount = Math.round(total * 100); // Convert to cents
     const res = await fetch("http://10.0.2.2:4242/create-payment-intent", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount }),
     });
     const { clientSecret } = await res.json();
     return clientSecret;
@@ -30,7 +33,11 @@ export default function CartScreen() {
   }
 
   async function openPaymentSheet() {
-    await presentPaymentSheet();
+    const { error } = await presentPaymentSheet();
+    if (!error) {
+      // Payment successful, clear the cart
+      clearCart();
+    }
   }
   // --------------------------------
 
@@ -54,8 +61,7 @@ export default function CartScreen() {
           <View style={styles.item}>
             <Image source={{ uri: item.image }} style={styles.wineImage} />
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.wineName}>{item.name}</Text>
-              <View style={styles.quantityContainer}>
+              <Text style={styles.wineName}>{item.name}</Text>              <Text style={styles.priceText}>Price: ${item.price}</Text>              <View style={styles.quantityContainer}>
                 <Pressable onPress={() => removeFromCart(item.id)} style={styles.quantityButton}>
                   <Text style={styles.quantityButtonText}>-</Text>
                 </Pressable>
@@ -66,6 +72,13 @@ export default function CartScreen() {
         )}
         contentContainerStyle={{ paddingBottom: 32 }}
       />
+
+      {/* Total Price */}
+      <View style={styles.totalContainer}>
+        <Text style={styles.totalText}>
+          Total: ${cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}
+        </Text>
+      </View>
 
       {/* --- BLOC PAIEMENT --- */}
       <View style={{ padding: 20, marginTop: 20 }}>
@@ -79,7 +92,7 @@ export default function CartScreen() {
             marginBottom: 20,
           }}
         >
-          <Text style={{ color: "white", fontSize: 16, fontWeight: "bold" }}>Confirm order</Text>
+          <Text style={{ color: "white", fontSize: 16, fontWeight: "bold" }}>Validate Order</Text>
         </Pressable>
 
         <Pressable
@@ -134,6 +147,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginBottom: 8,
   },
+  priceText: {
+    fontSize: 16,
+    fontFamily: Colors.typography.body,
+    color: Colors.palette.primary,
+    marginBottom: 8,
+  },
   quantityContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -154,6 +173,18 @@ const styles = StyleSheet.create({
   },
   quantityText: {
     fontSize: 16,
+  },
+  totalContainer: {
+    padding: 16,
+    backgroundColor: Colors.light.card,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  totalText: {
+    fontSize: 20,
+    fontFamily: Colors.typography.heading,
+    color: Colors.palette.primary,
   },
   center: {
     flex: 1,
