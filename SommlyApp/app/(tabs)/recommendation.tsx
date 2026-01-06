@@ -1,85 +1,88 @@
-import { StyleSheet, FlatList } from 'react-native';
+import React, { useEffect, useState, useContext } from 'react';
+import { StyleSheet, FlatList, Image, Button } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import Colors from '@/constants/Colors';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { app } from '../../firebaseConfig';
+import { CartContext } from '../../context/CartContext';
 
-const SOMMELIER_POSTS = [
-  {
-    id: '1',
-    type: 'Red Wine',
-    title: 'Château Margaux – Bordeaux',
-    comment:
-      'An iconic red wine with exceptional elegance. Aromas of blackcurrant, violet, and fine oak. A refined choice for special occasions.',
-  },
-  {
-    id: '2',
-    type: 'White Wine',
-    title: 'Chablis Premier Cru',
-    comment:
-      'Crisp and mineral-driven, this wine reveals citrus zest and green apple notes. Perfect with oysters or grilled fish.',
-  },
-  {
-    id: '3',
-    type: 'Rosé Wine',
-    title: 'Côtes de Provence Rosé',
-    comment:
-      'Light, fresh, and expressive. Notes of strawberry and white peach make this rosé ideal for summer aperitifs.',
-  },
-  {
-    id: '4',
-    type: 'Red Wine',
-    title: 'Barolo – Piedmont',
-    comment:
-      'A powerful and complex red with aromas of cherry, leather, and truffle. Best enjoyed with rich and slow-cooked dishes.',
-  },
-  {
-    id: '5',
-    type: 'White Wine',
-    title: 'Sancerre',
-    comment:
-      'Vibrant and aromatic, this Sauvignon Blanc offers floral notes and a clean finish. Excellent with goat cheese.',
-  },
-  {
-    id: '6',
-    type: 'Red Wine',
-    title: 'Rioja Reserva',
-    comment:
-      'Smooth and balanced, featuring ripe red fruits, vanilla, and subtle spice. A great companion for grilled meats.',
-  },
-  {
-    id: '7',
-    type: 'Rosé Wine',
-    title: 'Tavel Rosé',
-    comment:
-      'Structured and intense for a rosé. Rich aromas of red berries and spices make it perfect for food pairings.',
-  },
-  {
-    id: '8',
-    type: 'White Wine',
-    title: 'Puligny-Montrachet',
-    comment:
-      'Elegant and round with notes of butter, hazelnut, and white flowers. A luxurious white wine for fine dining.',
-  },
-  {
-    id: '9',
-    type: 'Red Wine',
-    title: 'Malbec – Mendoza',
-    comment:
-      'Bold and generous with dark fruit flavors and a hint of cocoa. A perfect match for barbecued dishes.',
-  },
-  {
-    id: '10',
-    type: 'White Wine',
-    title: 'Riesling – Alsace',
-    comment:
-      'Fresh and aromatic, with notes of citrus and floral honey. Its vibrant acidity makes it very food-friendly.',
-  },
-];
+const db = getFirestore(app);
 
 export default function SommelierScreen() {
+  const [wines, setWines] = useState<any[]>([]);
+  const { addToCart } = useContext(CartContext);
+
+  useEffect(() => {
+    const fetchWines = async () => {
+      try {
+        const winesCol = collection(db, 'wines');
+        const snapshot = await getDocs(winesCol);
+        const data = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setWines(data);
+      } catch (e) {
+        console.error('Error fetching wines:', e);
+      }
+    };
+
+    fetchWines();
+  }, []);
+
+  const renderRecommendation = (wine: any) => {
+    const origin = wine.origin ?? {};
+    const pairings = wine.pairing ?? [];
+
+    return (
+      <View style={styles.card}>
+        {wine.image && (
+          <Image source={{ uri: wine.image }} style={styles.wineImage} />
+        )}
+
+        <Text style={styles.wineType}>{wine.color}</Text>
+        <Text style={styles.wineTitle}>{wine.name}</Text>
+
+
+        {wine.description && (
+          <Text style={styles.comment}>
+            {wine.description}
+          </Text>
+        )}
+
+
+        {(origin.country || origin.region || origin.Year) && (
+          <Text style={styles.meta}>
+            Origin: {origin.country}
+            {origin.region ? `, ${origin.region}` : ''}
+            {origin.Year ? ` • ${origin.Year}` : ''}
+          </Text>
+        )}
+
+
+        {pairings.length > 0 && (
+          <Text style={styles.pairing}>
+            Perfect with: {pairings.join(', ')}
+          </Text>
+        )}
+
+        <Button
+          title="Add to Cart"
+          onPress={() =>
+            addToCart({
+              id: wine.id,
+              name: wine.name,
+              image: wine.image,
+            })
+          }
+        />
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Recommendations</Text>
-
+      <Text style={styles.title}>Sommelier Recommendations</Text>
       <View
         style={styles.separator}
         lightColor={Colors.light.border}
@@ -87,16 +90,10 @@ export default function SommelierScreen() {
       />
 
       <FlatList
-        data={SOMMELIER_POSTS}
-        keyExtractor={(item) => item.id}
+        data={wines}
+        keyExtractor={item => item.id}
         contentContainerStyle={{ paddingBottom: 40 }}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.type}>{item.type}</Text>
-            <Text style={styles.wineTitle}>{item.title}</Text>
-            <Text style={styles.comment}>{item.comment}</Text>
-          </View>
-        )}
+        renderItem={({ item }) => renderRecommendation(item)}
       />
     </View>
   );
@@ -107,43 +104,68 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.light.background,
     paddingTop: 16,
+    alignItems: 'center',
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontFamily: Colors.typography.heading,
-    alignSelf: 'center',
     marginBottom: 8,
+    textAlign: 'center',
   },
   separator: {
     marginVertical: 16,
     height: 1,
     width: '85%',
-    alignSelf: 'center',
   },
   card: {
     backgroundColor: Colors.light.card,
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 20,
     padding: 16,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: Colors.light.border,
+    alignItems: 'center',
   },
-  type: {
+  wineImage: {
+    width: 180,
+    height: 180,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  wineType: {
     fontSize: 13,
     fontFamily: Colors.typography.bodyBold,
     color: Colors.palette.primary,
-    marginBottom: 6,
+    marginBottom: 4,
+    textAlign: 'center',
   },
   wineTitle: {
     fontSize: 18,
     fontFamily: Colors.typography.subheading,
     marginBottom: 8,
+    textAlign: 'center',
   },
   comment: {
     fontSize: 15,
     fontFamily: Colors.typography.body,
     color: Colors.palette.textSecondary,
     lineHeight: 22,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  meta: {
+    fontSize: 13,
+    fontFamily: Colors.typography.body,
+    color: Colors.palette.textSecondary,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  pairing: {
+    fontSize: 14,
+    fontFamily: Colors.typography.bodyBold,
+    color: Colors.palette.secondary,
+    marginBottom: 12,
+    textAlign: 'center',
   },
 });
