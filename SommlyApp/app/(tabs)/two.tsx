@@ -143,6 +143,7 @@ function WineAccordion({ wine, onAdd }: {wine: any, onAdd: () => void}) {
           )}
           {typeof year !== 'undefined' && <Text>Year: {year}</Text>}
           {'rating' in wine && <Text>Rating: {wine.rating} ⭐</Text>}
+          {wine.price && <Text>Price: ${wine.price}</Text>}
           
 
           {Array.isArray(pairings) && pairings.length > 0 && (
@@ -158,7 +159,7 @@ function WineAccordion({ wine, onAdd }: {wine: any, onAdd: () => void}) {
             style={styles.addButton}
             onPress={onAdd}
           >
-            <Text style={styles.addButtonText}>Add to cart</Text>
+            <Text style={styles.addButtonText}>Add to Cart</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -247,7 +248,7 @@ export default function ShopScreen() {
           renderItem={({ item }) => (
             <WineAccordion
               wine={item}
-              onAdd={() => addToCart({ id: item.id, name: item.name, image: item.image })}
+              onAdd={() => addToCart({ id: item.id, name: item.name, image: item.image, price: item.price })}
             />
           )}
           contentContainerStyle={{ paddingBottom: 32 }}
