@@ -1,221 +1,332 @@
-import React, { useContext, useState } from 'react';
-import { StyleSheet, Image, FlatList, Pressable } from 'react-native';
-import { Text, View } from '@/components/Themed';
-import Colors from '@/constants/Colors';
-import { CartContext } from '../../context/CartContext';
-import { initPaymentSheet, presentPaymentSheet } from "@stripe/stripe-react-native";
+import React, { useContext, useState } from "react";
+import {
+  StyleSheet,
+  Image,
+  FlatList,
+  Pressable,
+  Platform,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
+import { Text, View } from "@/components/Themed";
+import Colors from "@/constants/Colors";
+import { CartContext } from "../../context/CartContext";
+import {
+  initPaymentSheet,
+  presentPaymentSheet,
+} from "@stripe/stripe-react-native";
+import Constants from "expo-constants";
 
+/* =========================
+   UTILS
+========================= */
+function getBaseUrl() {
+  if (Platform.OS === "android" && !Constants.isDevice) {
+    return "http://10.0.2.2:4242";
+  }
+
+  const host = Constants.expoConfig?.hostUri?.split(":").shift() ?? "localhost";
+  return `http://${host}:4242`;
+}
+
+/* =========================
+   SCREEN
+========================= */
 export default function CartScreen() {
-  const { cartItems, removeFromCart, clearCart } = useContext(CartContext);
+  const { cartItems, removeFromCart, clearCart } =
+    useContext(CartContext);
 
-  // --- LOGIQUE PAIEMENT STRIPE ---
   const [ready, setReady] = useState(false);
+  const [loading, setLoading] = useState(false);
 
+  /* =========================
+     STRIPE
+  ========================= */
   async function fetchClientSecret() {
-    const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const amount = Math.round(total * 100); // Convert to cents
-    const res = await fetch("http://10.0.2.2:4242/create-payment-intent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount }),
-    });
-    const { clientSecret } = await res.json();
-    return clientSecret;
+    const total = cartItems.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+
+    const amount = Math.round(total * 100);
+    const baseUrl = getBaseUrl();
+    const url = `${baseUrl}/create-payment-intent`;
+
+    // Set a fetch timeout so we get a clear error instead of a silent hang
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        const body = await res.text();
+        console.error("Create payment intent failed:", res.status, body);
+        Alert.alert("Erreur serveur", `${res.status}: ${body}`);
+        throw new Error(`Server error ${res.status}`);
+      }
+
+      const { clientSecret } = await res.json();
+      return clientSecret;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      const isAbort = (err as any)?.name === "AbortError";
+      if (isAbort) {
+        console.error("Network timeout to", url);
+        Alert.alert("Timeout réseau", `La requête vers ${url} a expiré.`);
+        throw new Error("Network timeout");
+      }
+
+      console.error("Network error while fetching client secret:", err);
+      const message = err instanceof Error ? err.message : String(err);
+      Alert.alert("Erreur réseau", message);
+      throw err;
+    }
   }
 
   async function initializePaymentSheet() {
-    const clientSecret = await fetchClientSecret();
-    await initPaymentSheet({
-      merchantDisplayName: "Sommly",
-      paymentIntentClientSecret: clientSecret,
-    });
-    setReady(true);
+    try {
+      setLoading(true);
+      console.log("INIT PAYMENT");
+      const clientSecret = await fetchClientSecret();
+
+      const { error } = await initPaymentSheet({
+        merchantDisplayName: "Sommly",
+        paymentIntentClientSecret: clientSecret,
+      });
+
+      if (error) {
+        console.error("Stripe init error:", error);
+        Alert.alert("Erreur Paiement", error.message || "Échec de l'initialisation du paiement");
+        return;
+      }
+
+      setReady(true);
+
+      // Auto-open payment sheet after init to complete in one tap
+      const { error: presentError } = await presentPaymentSheet();
+      if (!presentError) {
+        clearCart();
+        setReady(false);
+        Alert.alert("Succès", "Paiement effectué ✅");
+      } else {
+        console.error("Payment error:", presentError);
+        Alert.alert("Erreur Paiement", presentError.message || "Échec du paiement");
+      }
+    } catch (err) {
+      console.error("Stripe init error:", err);
+      const message = err instanceof Error ? err.message : String(err);
+      Alert.alert("Erreur", message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function openPaymentSheet() {
     const { error } = await presentPaymentSheet();
+
     if (!error) {
-      // Payment successful, clear the cart
       clearCart();
+      setReady(false);
     }
   }
-  // --------------------------------
 
+  /* =========================
+     EMPTY CART
+  ========================= */
   if (cartItems.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyEmoji}>🍷</Text>
         <Text style={styles.emptyTitle}>Your cart is empty</Text>
-        <Text style={styles.emptySubtitle}>Discover our exceptional wines and start your selection!</Text>
+        <Text style={styles.emptySubtitle}>
+          Discover our exceptional wines and start your selection!
+        </Text>
       </View>
     );
   }
 
+  /* =========================
+     UI
+  ========================= */
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Cart</Text>
+
       <FlatList
         data={cartItems}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: 20 }}
         renderItem={({ item }) => (
           <View style={styles.item}>
-            <Image source={{ uri: item.image }} style={styles.wineImage} />
+            <Image
+              source={{ uri: item.image }}
+              style={styles.wineImage}
+            />
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={styles.wineName}>{item.name}</Text>
-              <Text style={styles.priceText}>Price: ${item.price}</Text>              
+              <Text style={styles.priceText}>
+                Price: ${item.price}
+              </Text>
               <View style={styles.quantityContainer}>
-                <Pressable onPress={() => removeFromCart(item.id)} style={styles.quantityButton}>
+                <Pressable
+                  onPress={() => removeFromCart(item.id)}
+                  style={styles.quantityButton}
+                >
                   <Text style={styles.quantityButtonText}>-</Text>
                 </Pressable>
-                <Text style={styles.quantityText}>Quantité: {item.quantity}</Text>
+                <Text style={styles.quantityText}>
+                  Quantity: {item.quantity}
+                </Text>
               </View>
             </View>
           </View>
         )}
-        contentContainerStyle={{ paddingBottom: 32 }}
       />
 
-      {/* Total Price */}
-      <View style={styles.totalContainer}>
+      {/* FOOTER FIXE */}
+      <View style={styles.footer}>
         <Text style={styles.totalText}>
-          Total: ${cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}
+          Total: $
+          {cartItems
+            .reduce(
+              (sum, item) =>
+                sum + item.price * item.quantity,
+              0
+            )
+            .toFixed(2)}
         </Text>
-      </View>
 
-      {/* --- BLOC PAIEMENT --- */}
-      <View style={{ padding: 20, marginTop: 20 }}>
         <Pressable
           onPress={initializePaymentSheet}
-          style={{
-            backgroundColor: "#722F37",
-            padding: 15,
-            borderRadius: 8,
-            alignItems: "center",
-            marginBottom: 20,
-          }}
+          disabled={loading}
+          style={[styles.payButton, loading && { opacity: 0.8 }]}
         >
-          <Text style={{ color: "white", fontSize: 16, fontWeight: "bold" }}>Validate Order</Text>
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.payButtonText}>
+              Validate Order
+            </Text>
+          )}
         </Pressable>
 
         <Pressable
           onPress={openPaymentSheet}
           disabled={!ready}
-          style={{
-            backgroundColor: ready ? "#722F37" : "#999",
-            padding: 15,
-            borderRadius: 8,
-            alignItems: "center",
-          }}
+          style={[
+            styles.payButton,
+            { backgroundColor: ready ? "#722F37" : "#999" },
+          ]}
         >
-          <Text style={{ color: "white", fontSize: 16, fontWeight: "bold" }}>Pay</Text>
+          <Text style={styles.payButtonText}>Pay</Text>
         </Pressable>
       </View>
-      {/* ------------------- */}
     </View>
   );
 }
 
+/* =========================
+   STYLES
+========================= */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'stretch',
-    padding: 16,
     backgroundColor: Colors.light.background,
   },
   title: {
     fontSize: 24,
-    fontFamily: Colors.typography.heading,
-    marginBottom: 16,
-    alignSelf: 'center',
+    margin: 16,
+    alignSelf: "center",
   },
   item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.light.border,
+    flexDirection: "row",
+    padding: 10,
     borderRadius: 8,
     marginBottom: 12,
     backgroundColor: Colors.light.card,
-    padding: 10,
+    marginHorizontal: 16,
   },
   wineImage: {
     width: 60,
     height: 60,
     borderRadius: 8,
-    backgroundColor: Colors.light.muted,
   },
   wineName: {
-    fontFamily: Colors.typography.subheading,
     fontSize: 18,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   priceText: {
     fontSize: 16,
-    fontFamily: Colors.typography.body,
     color: Colors.palette.primary,
-    marginBottom: 8,
   },
   quantityContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   quantityButton: {
     backgroundColor: Colors.palette.primary,
     width: 30,
     height: 30,
     borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 10,
   },
   quantityButtonText: {
-    color: Colors.light.card,
+    color: "white",
     fontSize: 18,
-    fontWeight: 'bold',
   },
   quantityText: {
     fontSize: 16,
   },
-  totalContainer: {
+  footer: {
     padding: 16,
-    backgroundColor: Colors.light.card,
-    borderRadius: 8,
-    marginBottom: 16,
-    alignItems: 'center',
+    borderTopWidth: 1,
+    borderColor: "#ddd",
+    backgroundColor: "white",
   },
   totalText: {
     fontSize: 20,
-    fontFamily: Colors.typography.heading,
+    marginBottom: 10,
+    alignSelf: "center",
     color: Colors.palette.primary,
   },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  payButton: {
+    backgroundColor: "#722F37",
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  payButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
   },
   emptyContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-    backgroundColor: Colors.light.background,
+    alignItems: "center",
+    justifyContent: "center",
   },
   emptyEmoji: {
     fontSize: 80,
-    marginBottom: 20,
   },
   emptyTitle: {
     fontSize: 24,
-    fontFamily: Colors.typography.heading,
-    color: Colors.palette.primary,
-    marginBottom: 10,
-    textAlign: 'center',
+    marginTop: 10,
   },
   emptySubtitle: {
     fontSize: 16,
-    fontFamily: Colors.typography.body,
-    color: Colors.palette.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
+    textAlign: "center",
+    marginTop: 6,
   },
 });
