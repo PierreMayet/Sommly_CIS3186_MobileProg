@@ -76,7 +76,7 @@ export default function SommelierScreen() {
             })
           }
         >
-          <Text style={styles.addButtonText}>Ajouter au panier</Text>
+          <Text style={styles.addButtonText}>Add to cart</Text>
         </TouchableOpacity>
       </View>
     );
