@@ -100,6 +100,7 @@ export default function CartScreen() {
       const { error } = await initPaymentSheet({
         merchantDisplayName: "Sommly",
         paymentIntentClientSecret: clientSecret,
+        returnURL: "sommlybase://stripe-redirect",
       });
 
       if (error) {
@@ -115,10 +116,8 @@ export default function CartScreen() {
       if (!presentError) {
         clearCart();
         setReady(false);
-        Alert.alert("Succès", "Paiement effectué ✅");
       } else {
         console.error("Payment error:", presentError);
-        Alert.alert("Erreur Paiement", presentError.message || "Échec du paiement");
       }
     } catch (err) {
       console.error("Stripe init error:", err);
