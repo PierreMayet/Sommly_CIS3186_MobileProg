@@ -105,7 +105,6 @@ export default function CartScreen() {
 
       if (error) {
         console.error("Stripe init error:", error);
-        Alert.alert("Erreur Paiement", error.message || "Échec de l'initialisation du paiement");
         return;
       }
 
