@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import {
   StyleSheet,
   Image,
@@ -16,17 +16,143 @@ import {
   presentPaymentSheet,
 } from "@stripe/stripe-react-native";
 import Constants from "expo-constants";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /* =========================
-   UTILS
+   UTILS - Improved URL Detection
 ========================= */
-function getBaseUrl() {
+const BACKEND_PORT = 4242;
+const CACHED_URL_KEY = "@sommly_backend_url";
+
+/**
+ * Get all possible backend URLs to try
+ */
+function getAllPossibleUrls(): string[] {
+  const urls: string[] = [];
+
+  // 1. Android Emulator (always first for Android emulator)
   if (Platform.OS === "android" && !Constants.isDevice) {
-    return "http://10.0.2.2:4242";
+    urls.push("http://10.0.2.2:4242");
+    return urls; // Return early for emulator
   }
 
-  const host = Constants.expoConfig?.hostUri?.split(":").shift() ?? "localhost";
-  return `http://${host}:4242`;
+  // 2. Try to get cached URL (if exists)
+  // This will be loaded asynchronously, so we'll handle it separately
+
+  // 3. Try Expo hostUri (most reliable for Expo Go)
+  try {
+    if (Constants.expoConfig?.hostUri) {
+      const host = Constants.expoConfig.hostUri.split(":").shift();
+      if (host && host !== "localhost" && host !== "127.0.0.1") {
+        urls.push(`http://${host}:${BACKEND_PORT}`);
+      }
+    }
+  } catch (error) {
+    console.warn("Error getting hostUri:", error);
+  }
+
+  // 4. Try debuggerHost (alternative Expo method)
+  try {
+    const expoConfig = Constants.expoConfig as any;
+    if (expoConfig?.debuggerHost) {
+      const host = expoConfig.debuggerHost.split(":").shift();
+      if (host && host !== "localhost" && host !== "127.0.0.1") {
+        urls.push(`http://${host}:${BACKEND_PORT}`);
+      }
+    }
+  } catch (error) {
+    console.warn("Error getting debuggerHost:", error);
+  }
+
+  // 5. Try manifest2 extra.expoGo.debuggerHost (for newer Expo versions)
+  try {
+    const manifest = (Constants.manifest2 || Constants.manifest) as any;
+    if (manifest?.extra?.expoGo?.debuggerHost) {
+      const host = manifest.extra.expoGo.debuggerHost.split(":").shift();
+      if (host && host !== "localhost" && host !== "127.0.0.1") {
+        urls.push(`http://${host}:${BACKEND_PORT}`);
+      }
+    }
+  } catch (error) {
+    console.warn("Error getting manifest debuggerHost:", error);
+  }
+
+  // 6. For iOS Simulator, use localhost
+  if (Platform.OS === "ios" && !Constants.isDevice) {
+    urls.push(`http://localhost:${BACKEND_PORT}`);
+  }
+
+  // 7. Fallback to localhost (for web or when all else fails)
+  urls.push(`http://localhost:${BACKEND_PORT}`);
+
+  // Remove duplicates
+  return Array.from(new Set(urls));
+}
+
+/**
+ * Test if a URL is reachable
+ */
+async function testUrl(url: string, timeout: number = 3000): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    const response = await fetch(`${url}/create-payment-intent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: 1000 }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+    return response.ok || response.status === 405; // 405 = Method not allowed (but server is reachable)
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Find working backend URL by trying multiple options
+ */
+async function findWorkingUrl(): Promise<string> {
+  // Try cached URL first
+  try {
+    const cachedUrl = await AsyncStorage.getItem(CACHED_URL_KEY);
+    if (cachedUrl) {
+      console.log("Testing cached URL:", cachedUrl);
+      const isWorking = await testUrl(cachedUrl, 2000);
+      if (isWorking) {
+        console.log("✅ Using cached URL:", cachedUrl);
+        return cachedUrl;
+      }
+    }
+  } catch (error) {
+    console.warn("Error checking cached URL:", error);
+  }
+
+  // Get all possible URLs
+  const urls = getAllPossibleUrls();
+  console.log("🔍 Trying URLs:", urls);
+
+  // Try each URL
+  for (const url of urls) {
+    console.log(`Testing: ${url}`);
+    const isWorking = await testUrl(url, 2000);
+    if (isWorking) {
+      console.log(`✅ Found working URL: ${url}`);
+      // Cache the working URL
+      try {
+        await AsyncStorage.setItem(CACHED_URL_KEY, url);
+      } catch (error) {
+        console.warn("Failed to cache URL:", error);
+      }
+      return url;
+    }
+  }
+
+  // If none work, return the first one (will show error to user)
+  console.warn("⚠️ No working URL found, using first option:", urls[0]);
+  return urls[0] || `http://localhost:${BACKEND_PORT}`;
 }
 
 /* =========================
@@ -38,6 +164,15 @@ export default function CartScreen() {
 
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [backendUrl, setBackendUrl] = useState<string | null>(null);
+
+  // Find working backend URL on component mount
+  useEffect(() => {
+    findWorkingUrl().then((url) => {
+      setBackendUrl(url);
+      console.log("Backend URL set to:", url);
+    });
+  }, []);
 
   /* =========================
      STRIPE
@@ -49,8 +184,17 @@ export default function CartScreen() {
     );
 
     const amount = Math.round(total * 100);
-    const baseUrl = getBaseUrl();
+
+    // Get backend URL (use cached or find new one)
+    let baseUrl = backendUrl;
+    if (!baseUrl) {
+      console.log("No cached URL, finding working URL...");
+      baseUrl = await findWorkingUrl();
+      setBackendUrl(baseUrl);
+    }
+
     const url = `${baseUrl}/create-payment-intent`;
+    console.log("Making payment request to:", url);
 
     // Set a fetch timeout so we get a clear error instead of a silent hang
     const controller = new AbortController();
@@ -69,7 +213,20 @@ export default function CartScreen() {
       if (!res.ok) {
         const body = await res.text();
         console.error("Create payment intent failed:", res.status, body);
-        Alert.alert("Erreur serveur", `${res.status}: ${body}`);
+        
+        // Try to find a different working URL
+        console.log("Trying to find alternative URL...");
+        const newUrl = await findWorkingUrl();
+        if (newUrl !== baseUrl) {
+          setBackendUrl(newUrl);
+          // Retry once with new URL
+          return fetchClientSecret();
+        }
+
+        Alert.alert(
+          "Erreur serveur",
+          `Status: ${res.status}\nURL: ${url}\n\nAssurez-vous que le serveur backend est démarré sur le port 4242.`
+        );
         throw new Error(`Server error ${res.status}`);
       }
 
@@ -78,15 +235,49 @@ export default function CartScreen() {
     } catch (err) {
       clearTimeout(timeoutId);
       const isAbort = (err as any)?.name === "AbortError";
+      
       if (isAbort) {
         console.error("Network timeout to", url);
-        Alert.alert("Timeout réseau", `La requête vers ${url} a expiré.`);
+        
+        // Try to find a different working URL before showing error
+        console.log("Timeout detected, trying to find alternative URL...");
+        const newUrl = await findWorkingUrl();
+        if (newUrl !== baseUrl) {
+          setBackendUrl(newUrl);
+          // Retry once with new URL
+          try {
+            return await fetchClientSecret();
+          } catch (retryErr) {
+            // If retry also fails, show error
+          }
+        }
+
+        Alert.alert(
+          "Timeout réseau",
+          `Impossible de se connecter à: ${url}\n\nVérifiez que:\n1. Le serveur backend est démarré (port 4242)\n2. Vous êtes sur le même réseau WiFi\n3. Le firewall n'est pas bloqué\n\nEssayez de redémarrer le serveur backend.`
+        );
         throw new Error("Network timeout");
       }
 
       console.error("Network error while fetching client secret:", err);
       const message = err instanceof Error ? err.message : String(err);
-      Alert.alert("Erreur réseau", message);
+      
+      // Try to find a different working URL
+      const newUrl = await findWorkingUrl();
+      if (newUrl !== baseUrl) {
+        setBackendUrl(newUrl);
+        // Retry once with new URL
+        try {
+          return await fetchClientSecret();
+        } catch (retryErr) {
+          // If retry also fails, show error
+        }
+      }
+
+      Alert.alert(
+        "Erreur réseau",
+        `URL: ${url}\n\nErreur: ${message}\n\nVérifiez que le serveur backend est démarré.\n\nCommande: cd backend && npm start`
+      );
       throw err;
     }
   }
