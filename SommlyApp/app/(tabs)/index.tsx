@@ -4,170 +4,46 @@ import { Text, View } from '@/components/Themed';
 import Colors from '@/constants/Colors';
 import { useRouter } from 'expo-router';
 
-// --- AJOUTS POUR L'IOT ---
+// --- CONFIGURATION FIREBASE ---
 import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
+import { getAuth, onAuthStateChanged } from 'firebase/auth'; // Pour gérer l'utilisateur
 import { app } from '../../firebaseConfig';
+
 const db = getFirestore(app);
-// -------------------------
-
-import { Button } from "react-native";
-import { initPaymentSheet, presentPaymentSheet } from "@stripe/stripe-react-native";
-
-const styles = StyleSheet.create({
-  scrollContainer: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-  },
-  container: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  heroImage: {
-    width: '100%',
-    height: 240,
-    borderRadius: 16,
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 36,
-    fontFamily: Colors.typography.heading,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontFamily: Colors.typography.body,
-    color: Colors.palette.textSecondary,
-    textAlign: 'center',
-    marginBottom: 24,
-    paddingHorizontal: 12,
-  },
-  button: {
-    backgroundColor: Colors.palette.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: 30,
-    marginBottom: 24, // Réduit un peu pour laisser de la place à la carte IoT
-  },
-  buttonText: {
-    color: Colors.light.card,
-    fontSize: 16,
-    fontFamily: Colors.typography.bodyBold,
-  },
-  // --- NOUVEAUX STYLES IOT ---
-  iotCard: {
-    width: '100%',
-    backgroundColor: '#fdf7f7',
-    padding: 20,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#eee',
-    marginBottom: 36,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    elevation: 3,
-  },
-  iotHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  iotTitle: {
-    fontSize: 18,
-    fontFamily: Colors.typography.heading,
-    color: Colors.palette.primary,
-  },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#4CAF50',
-  },
-  iotStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  iotStatBox: {
-    alignItems: 'center',
-  },
-  iotStatLabel: {
-    fontSize: 10,
-    fontFamily: Colors.typography.bodyBold,
-    color: '#999',
-    letterSpacing: 1,
-  },
-  iotStatValue: {
-    fontSize: 26,
-    fontFamily: Colors.typography.heading,
-    color: Colors.palette.textPrimary,
-  },
-  iotStatusText: {
-    fontSize: 11,
-    textAlign: 'center',
-    color: '#4CAF50',
-    marginTop: 12,
-    fontFamily: Colors.typography.bodyBold,
-  },
-  // ---------------------------
-  section: {
-    width: '100%',
-    marginBottom: 36,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontFamily: Colors.typography.heading,
-    marginBottom: 12,
-  },
-  sectionText: {
-    fontSize: 16,
-    fontFamily: Colors.typography.body,
-    color: Colors.palette.textSecondary,
-    marginBottom: 16,
-    lineHeight: 22,
-  },
-  imageRow: {
-    flexDirection: 'row',
-  },
-  smallImage: {
-    width: 140,
-    height: 140,
-    borderRadius: 12,
-    marginRight: 12,
-  },
-  secondaryButton: {
-    alignSelf: 'center',
-    backgroundColor: Colors.palette.primary, 
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 30,
-    marginBottom: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    color: Colors.light.card, 
-    fontSize: 16,
-    fontFamily: Colors.typography.bodyBold,
-    textAlign: 'center',
-  },
-});
+const auth = getAuth(app);
 
 export default function HomeScreen() {
   const router = useRouter();
-
-  // --- LOGIQUE IOT (Lecture en temps réel) ---
+  
+  // --- ÉTATS ---
   const [cellarData, setCellarData] = useState({ temperature: '--', humidity: '--' });
+  const [user, setUser] = useState<any>(null);
 
+  // 1. ICI : MODIFIE AVEC TON EMAIL POUR LA DÉMO
+  const DEMO_EMAIL = "bonnuitelise@gmail.com"; 
+
+  // 2. ÉCOUTER LA CONNEXION DE L'UTILISATEUR
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "cellar_sensors", "sensor_01"), (snapshot) => {
-      if (snapshot.exists()) {
-        setCellarData(snapshot.data() as any);
-      }
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
     });
-    return () => unsub();
+    return () => unsubscribeAuth();
   }, []);
-  // --------------------------------------------
+
+  // 3. LOGIQUE IOT (Seulement si c'est TON compte)
+  useEffect(() => {
+    if (user && user.email === DEMO_EMAIL) {
+      const unsub = onSnapshot(doc(db, "cellar_sensors", "sensor_01"), (snapshot) => {
+        if (snapshot.exists()) {
+          setCellarData(snapshot.data() as any);
+        }
+      });
+      return () => unsub();
+    } else {
+      // On remet à zéro si déconnecté
+      setCellarData({ temperature: '--', humidity: '--' });
+    }
+  }, [user]);
 
   return (
     <ScrollView style={styles.scrollContainer}>
@@ -190,24 +66,33 @@ export default function HomeScreen() {
           <Text style={styles.buttonText}>Explore the shop</Text>
         </Pressable>
 
-        {/* --- BLOC IOT : SMART CELLAR STATUS --- */}
-        <View style={styles.iotCard}>
-          <View style={styles.iotHeader}>
-            <Text style={styles.iotTitle}>🍷 Smart Cellar Status</Text>
-            <View style={styles.liveDot} />
-          </View>
-          <View style={styles.iotStatsRow}>
-            <View style={styles.iotStatBox}>
-              <Text style={styles.iotStatLabel}>TEMPERATURE</Text>
-              <Text style={styles.iotStatValue}>{cellarData.temperature}°C</Text>
+        {/* --- BLOC IOT CONDITIONNEL --- */}
+        {user && user.email === DEMO_EMAIL ? (
+          <View style={styles.iotCard}>
+            <View style={styles.iotHeader}>
+              <Text style={styles.iotTitle}>🍷 My Connected Cellar</Text>
+              <View style={styles.liveDot} />
             </View>
-            <View style={styles.iotStatBox}>
-              <Text style={styles.iotStatLabel}>HUMIDITY</Text>
-              <Text style={styles.iotStatValue}>{cellarData.humidity}%</Text>
+            <View style={styles.iotStatsRow}>
+              <View style={styles.iotStatBox}>
+                <Text style={styles.iotStatLabel}>TEMPERATURE</Text>
+                <Text style={styles.iotStatValue}>{cellarData.temperature}°C</Text>
+              </View>
+              <View style={styles.iotStatBox}>
+                <Text style={styles.iotStatLabel}>HUMIDITY</Text>
+                <Text style={styles.iotStatValue}>{cellarData.humidity}%</Text>
+              </View>
             </View>
+            <Text style={styles.iotStatusText}>● Real-time monitoring enabled</Text>
           </View>
-          <Text style={styles.iotStatusText}>● Real-time monitoring enabled</Text>
-        </View>
+        ) : (
+          /* Ce qui s'affiche pour les autres utilisateurs */
+          <View style={styles.promoCard}>
+            <Text style={styles.promoTitle}>Smart Cellar System</Text>
+            <Text style={styles.promoText}>Connect your sensors to monitor your wine collection remotely.</Text>
+            <Text style={styles.promoLink}>Learn more about IoT packs →</Text>
+          </View>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>A curated selection</Text>
@@ -280,3 +165,172 @@ export default function HomeScreen() {
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  scrollContainer: {
+    flex: 1,
+    backgroundColor: Colors.light.background,
+  },
+  container: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  heroImage: {
+    width: '100%',
+    height: 240,
+    borderRadius: 16,
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 36,
+    fontFamily: Colors.typography.heading,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    fontFamily: Colors.typography.body,
+    color: Colors.palette.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 12,
+  },
+  button: {
+    backgroundColor: Colors.palette.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    borderRadius: 30,
+    marginBottom: 24,
+  },
+  buttonText: {
+    color: Colors.light.card,
+    fontSize: 16,
+    fontFamily: Colors.typography.bodyBold,
+  },
+  // --- STYLES IOT ---
+  iotCard: {
+    width: '100%',
+    backgroundColor: '#fdf7f7',
+    padding: 20,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#eee',
+    marginBottom: 36,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    elevation: 3,
+  },
+  iotHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  iotTitle: {
+    fontSize: 18,
+    fontFamily: Colors.typography.heading,
+    color: Colors.palette.primary,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4CAF50',
+  },
+  iotStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  iotStatBox: {
+    alignItems: 'center',
+  },
+  iotStatLabel: {
+    fontSize: 10,
+    fontFamily: Colors.typography.bodyBold,
+    color: '#999',
+    letterSpacing: 1,
+  },
+  iotStatValue: {
+    fontSize: 26,
+    fontFamily: Colors.typography.heading,
+    color: Colors.palette.textPrimary,
+  },
+  iotStatusText: {
+    fontSize: 11,
+    textAlign: 'center',
+    color: '#4CAF50',
+    marginTop: 12,
+    fontFamily: Colors.typography.bodyBold,
+  },
+  // --- STYLE PROMO (SI NON CONNECTÉ) ---
+  promoCard: {
+    width: '100%',
+    backgroundColor: '#f9f9f9',
+    padding: 20,
+    borderRadius: 20,
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    marginBottom: 36,
+    alignItems: 'center',
+  },
+  promoTitle: {
+    fontSize: 16,
+    fontFamily: Colors.typography.heading,
+    color: '#888',
+    marginBottom: 5,
+  },
+  promoText: {
+    fontSize: 13,
+    color: '#aaa',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  promoLink: {
+    fontSize: 12,
+    color: Colors.palette.primary,
+    fontFamily: Colors.typography.bodyBold,
+  },
+  // ---------------------------
+  section: {
+    width: '100%',
+    marginBottom: 36,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontFamily: Colors.typography.heading,
+    marginBottom: 12,
+  },
+  sectionText: {
+    fontSize: 16,
+    fontFamily: Colors.typography.body,
+    color: Colors.palette.textSecondary,
+    marginBottom: 16,
+    lineHeight: 22,
+  },
+  imageRow: {
+    flexDirection: 'row',
+  },
+  smallImage: {
+    width: 140,
+    height: 140,
+    borderRadius: 12,
+    marginRight: 12,
+  },
+  secondaryButton: {
+    alignSelf: 'center',
+    backgroundColor: Colors.palette.primary, 
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 30,
+    marginBottom: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: Colors.light.card, 
+    fontSize: 16,
+    fontFamily: Colors.typography.bodyBold,
+    textAlign: 'center',
+  },
+});
