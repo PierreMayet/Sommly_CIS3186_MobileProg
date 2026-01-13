@@ -17,11 +17,19 @@ export default function SommelierScreen() {
       try {
         const winesCol = collection(db, 'wines');
         const snapshot = await getDocs(winesCol);
+
         const data = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
         }));
-        setWines(data);
+
+        // 🔀 Mélange aléatoire
+        const shuffled = data.sort(() => 0.5 - Math.random());
+
+        // 🍷 Sélection de 5 vins pour le mois
+        const monthlySelection = shuffled.slice(0, 5);
+
+        setWines(monthlySelection);
       } catch (e) {
         console.error('Error fetching wines:', e);
       }
@@ -43,13 +51,9 @@ export default function SommelierScreen() {
         <Text style={styles.wineType}>{wine.color}</Text>
         <Text style={styles.wineTitle}>{wine.name}</Text>
 
-
         {wine.description && (
-          <Text style={styles.comment}>
-            {wine.description}
-          </Text>
+          <Text style={styles.comment}>{wine.description}</Text>
         )}
-
 
         {(origin.country || origin.region || origin.Year) && (
           <Text style={styles.meta}>
@@ -62,7 +66,6 @@ export default function SommelierScreen() {
         {wine.price && (
           <Text style={styles.price}>Price: ${wine.price}</Text>
         )}
-
 
         {pairings.length > 0 && (
           <Text style={styles.pairing}>
@@ -89,7 +92,8 @@ export default function SommelierScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sommelier Recommendations</Text>
+      <Text style={styles.title}>🍷 Monthly Wine Selection</Text>
+
       <View
         style={styles.separator}
         lightColor={Colors.light.border}
@@ -175,6 +179,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: 'center',
   },
+  price: {
+    fontSize: 16,
+    fontFamily: Colors.typography.bodyBold,
+    color: Colors.palette.primary,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
   addButton: {
     backgroundColor: Colors.palette.primary,
     paddingVertical: 10,
@@ -187,12 +198,5 @@ const styles = StyleSheet.create({
     color: Colors.light.card,
     fontSize: 16,
     fontFamily: Colors.typography.bodyBold,
-  },
-  price: {
-    fontSize: 16,
-    fontFamily: Colors.typography.bodyBold,
-    color: Colors.palette.primary,
-    textAlign: 'center',
-    marginBottom: 12,
   },
 });
