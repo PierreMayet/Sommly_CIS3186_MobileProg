@@ -3,6 +3,8 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  ScrollView,
+  FlatList,
 } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import Colors from '@/constants/Colors';
@@ -19,6 +21,12 @@ import {
   doc,
   setDoc,
   getDoc,
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  Timestamp,
 } from 'firebase/firestore';
 import { app } from '../../firebaseConfig';
 
@@ -37,6 +45,10 @@ export default function ProfileScreen() {
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
 
+  // Orders
+  const [orders, setOrders] = useState<any[]>([]);
+  const [isEditing, setIsEditing] = useState(false);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async currentUser => {
       setUser(currentUser);
@@ -54,6 +66,25 @@ export default function ProfileScreen() {
           setCity(data.city || '');
           setAddress(data.address || '');
         }
+
+        // 🔽 Récupération des commandes
+        const ordersQuery = query(
+          collection(db, 'orders'),
+          where('userId', '==', currentUser.uid),
+          orderBy('createdAt', 'desc')
+        );
+
+        const unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
+          const ordersData = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          setOrders(ordersData);
+        });
+
+        return () => unsubscribeOrders();
+      } else {
+        setOrders([]);
       }
     });
 
@@ -64,7 +95,8 @@ export default function ProfileScreen() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (error: any) {
-      alert(error.message);
+      console.log('Login error:', error.code, error.message);
+      alert(`Login failed: ${error.code} - ${error.message}`);
     }
   }
 
@@ -78,7 +110,8 @@ export default function ProfileScreen() {
         createdAt: new Date(),
       });
     } catch (error: any) {
-      alert(error.message);
+      console.log('Register error:', error.code, error.message);
+      alert(`Registration failed: ${error.code} - ${error.message}`);
     }
   }
 
@@ -111,7 +144,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <Text style={styles.title}>Profile</Text>
 
       {user ? (
@@ -119,46 +152,110 @@ export default function ProfileScreen() {
           <Text style={styles.subtitle}>Connected as</Text>
           <Text style={styles.email}>{user.email}</Text>
 
-          <TextInput
-            style={styles.input}
-            placeholder="First name"
-            value={firstName}
-            onChangeText={setFirstName}
-            placeholderTextColor={Colors.palette.textSecondary}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Last name"
-            value={lastName}
-            onChangeText={setLastName}
-            placeholderTextColor={Colors.palette.textSecondary}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Age"
-            value={age}
-            keyboardType="numeric"
-            onChangeText={setAge}
-            placeholderTextColor={Colors.palette.textSecondary}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="City"
-            value={city}
-            onChangeText={setCity}
-            placeholderTextColor={Colors.palette.textSecondary}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Address"
-            value={address}
-            onChangeText={setAddress}
-            placeholderTextColor={Colors.palette.textSecondary}
-          />
+          {isEditing ? (
+            // Formulaire d'édition
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="First name"
+                value={firstName}
+                onChangeText={setFirstName}
+                placeholderTextColor={Colors.palette.textSecondary}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Last name"
+                value={lastName}
+                onChangeText={setLastName}
+                placeholderTextColor={Colors.palette.textSecondary}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Age"
+                value={age}
+                keyboardType="numeric"
+                onChangeText={setAge}
+                placeholderTextColor={Colors.palette.textSecondary}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="City"
+                value={city}
+                onChangeText={setCity}
+                placeholderTextColor={Colors.palette.textSecondary}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Address"
+                value={address}
+                onChangeText={setAddress}
+                placeholderTextColor={Colors.palette.textSecondary}
+              />
 
-          <TouchableOpacity style={styles.primaryButton} onPress={handleSaveProfile}>
-            <Text style={styles.primaryButtonText}>Save Profile</Text>
-          </TouchableOpacity>
+              <TouchableOpacity style={styles.primaryButton} onPress={handleSaveProfile}>
+                <Text style={styles.primaryButtonText}>Save Profile</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.secondaryButton} onPress={() => setIsEditing(false)}>
+                <Text style={styles.secondaryButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            // Affichage des informations
+            <View style={styles.profileInfo}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>First Name:</Text>
+                <Text style={styles.infoValue}>{firstName || 'Not set'}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Last Name:</Text>
+                <Text style={styles.infoValue}>{lastName || 'Not set'}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Age:</Text>
+                <Text style={styles.infoValue}>{age || 'Not set'}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>City:</Text>
+                <Text style={styles.infoValue}>{city || 'Not set'}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Address:</Text>
+                <Text style={styles.infoValue}>{address || 'Not set'}</Text>
+              </View>
+
+              <TouchableOpacity style={styles.primaryButton} onPress={() => setIsEditing(true)}>
+                <Text style={styles.primaryButtonText}>Edit Information</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <View style={styles.ordersContainer}>
+            <Text style={styles.ordersTitle}>My Orders</Text>
+            {orders.length === 0 ? (
+              <Text style={styles.noOrders}>No orders yet</Text>
+            ) : (
+              <FlatList
+                data={orders}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <View style={styles.orderItem}>
+                    <Text style={styles.orderDate}>
+                      {item.createdAt instanceof Timestamp 
+                        ? item.createdAt.toDate().toLocaleDateString()
+                        : new Date(item.createdAt).toLocaleDateString()}
+                    </Text>
+                    <Text style={styles.orderTotal}>Total: ${item.total.toFixed(2)}</Text>
+                    <Text style={styles.orderStatus}>Status: {item.status}</Text>
+                    <Text style={styles.orderItems}>
+                      Items: {item.items.map((wine: any) => `${wine.name} (${wine.quantity})`).join(', ')}
+                    </Text>
+                  </View>
+                )}
+                scrollEnabled={false}
+              />
+            )}
+          </View>
 
           <TouchableOpacity style={styles.secondaryButton} onPress={handleLogout}>
             <Text style={styles.secondaryButtonText}>Logout</Text>
@@ -193,22 +290,21 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
     backgroundColor: Colors.light.background,
   },
   title: {
     fontSize: 24,
     fontFamily: Colors.typography.heading,
     marginBottom: 16,
+    textAlign: 'center',
+    marginTop: 16,
   },
   subtitle: {
     fontSize: 14,
@@ -227,6 +323,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.light.border,
     alignItems: 'center',
+    alignSelf: 'center',
+    marginBottom: 20,
   },
   input: {
     width: '100%',
@@ -263,5 +361,75 @@ const styles = StyleSheet.create({
     color: Colors.light.card,
     fontSize: 16,
     fontFamily: Colors.typography.bodyBold,
+  },
+  ordersContainer: {
+    width: '100%',
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+  },
+  ordersTitle: {
+    fontSize: 18,
+    fontFamily: Colors.typography.bodyBold,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  noOrders: {
+    textAlign: 'center',
+    color: Colors.palette.textSecondary,
+    fontStyle: 'italic',
+  },
+  orderItem: {
+    backgroundColor: Colors.light.background,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  orderDate: {
+    fontSize: 14,
+    fontFamily: Colors.typography.bodyBold,
+    color: Colors.palette.primary,
+  },
+  orderTotal: {
+    fontSize: 16,
+    fontFamily: Colors.typography.bodyBold,
+    marginTop: 4,
+  },
+  orderStatus: {
+    fontSize: 14,
+    color: Colors.palette.textSecondary,
+    marginTop: 2,
+  },
+  orderItems: {
+    fontSize: 12,
+    color: Colors.palette.textSecondary,
+    marginTop: 4,
+  },
+  profileInfo: {
+    width: '100%',
+    marginTop: 10,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+  },
+  infoLabel: {
+    fontSize: 16,
+    fontFamily: Colors.typography.bodyBold,
+    color: Colors.palette.textPrimary,
+  },
+  infoValue: {
+    fontSize: 16,
+    color: Colors.palette.textSecondary,
+    flex: 1,
+    textAlign: 'right',
   },
 });

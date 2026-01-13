@@ -17,6 +17,12 @@ import {
 } from "@stripe/stripe-react-native";
 import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getAuth, onAuthStateChanged, User } from "firebase/auth";
+import { getFirestore, collection, addDoc, Timestamp } from "firebase/firestore";
+import { app } from "../../firebaseConfig";
+
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 /* =========================
    UTILS - Improved URL Detection
@@ -159,12 +165,21 @@ async function findWorkingUrl(): Promise<string> {
    SCREEN
 ========================= */
 export default function CartScreen() {
-  const { cartItems, removeFromCart, clearCart } =
+  const { cartItems, removeFromCart, increaseQuantity, clearCart } =
     useContext(CartContext);
 
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [backendUrl, setBackendUrl] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+
+  // Listen to auth state
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return unsubscribe;
+  }, []);
 
   // Find working backend URL on component mount
   useEffect(() => {
@@ -275,14 +290,44 @@ export default function CartScreen() {
       }
 
       Alert.alert(
-        "Erreur réseau",
+        "Network error",
         `URL: ${url}\n\nErreur: ${message}\n\nVérifiez que le serveur backend est démarré.\n\nCommande: cd backend && npm start`
       );
       throw err;
     }
   }
 
+  async function saveOrder() {
+    if (!user) return;
+
+    try {
+      const total = cartItems.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
+
+      await addDoc(collection(db, "orders"), {
+        userId: user.uid,
+        userEmail: user.email,
+        items: cartItems,
+        total: total,
+        status: "paid",
+        createdAt: Timestamp.fromDate(new Date()),
+      });
+    } catch (error) {
+      console.error("Error saving order:", error);
+    }
+  }
+
   async function initializePaymentSheet() {
+    if (!user) {
+      Alert.alert(
+        "Authentication Required",
+        "You must be logged in to validate an order. Please go to Profile to login or register."
+      );
+      return;
+    }
+
     try {
       setLoading(true);
       console.log("INIT PAYMENT");
@@ -304,8 +349,11 @@ export default function CartScreen() {
       // Auto-open payment sheet after init to complete in one tap
       const { error: presentError } = await presentPaymentSheet();
       if (!presentError) {
+        // Payment successful, save order to Firestore
+        await saveOrder();
         clearCart();
         setReady(false);
+        Alert.alert("Success", "Your order has been placed successfully!");
       } else {
         console.error("Payment error:", presentError);
       }
@@ -315,15 +363,6 @@ export default function CartScreen() {
       Alert.alert("Erreur", message);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function openPaymentSheet() {
-    const { error } = await presentPaymentSheet();
-
-    if (!error) {
-      clearCart();
-      setReady(false);
     }
   }
 
@@ -375,6 +414,12 @@ export default function CartScreen() {
                 <Text style={styles.quantityText}>
                   Quantity: {item.quantity}
                 </Text>
+                <Pressable
+                  onPress={() => increaseQuantity(item.id)}
+                  style={styles.quantityButton}
+                >
+                  <Text style={styles.quantityButtonText}>+</Text>
+                </Pressable>
               </View>
             </View>
           </View>
@@ -406,17 +451,6 @@ export default function CartScreen() {
               Validate Order
             </Text>
           )}
-        </Pressable>
-
-        <Pressable
-          onPress={openPaymentSheet}
-          disabled={!ready}
-          style={[
-            styles.payButton,
-            { backgroundColor: ready ? "#722F37" : "#999" },
-          ]}
-        >
-          <Text style={styles.payButtonText}>Pay</Text>
         </Pressable>
       </View>
     </View>
