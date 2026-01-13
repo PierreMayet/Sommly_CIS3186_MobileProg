@@ -12,6 +12,11 @@ if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental && UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
+// Fonction pour supprimer les accents
+function removeAccents(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 const FILTERS = [
   { label: 'All', value: 'all' },
   { label: 'Red', value: 'Red' },
@@ -388,7 +393,7 @@ export default function ShopScreen() {
     // Si aucun pairing n'est coché, on affiche tout (par défaut ou si "All pairings" activé)
     const matchesPairing =
       pairingFilter.length === 0 || pairArr.some((p: string) => pairingFilter.includes(p.trim()));
-    const matchesSearch = w.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = removeAccents(w.name?.toLowerCase() || '').includes(removeAccents(searchQuery.toLowerCase()));
     // Filtre de prix
     const winePrice = parseFloat(w.price) || 0;
     const matchesPrice = winePrice >= priceRange.min && winePrice <= priceRange.max;
