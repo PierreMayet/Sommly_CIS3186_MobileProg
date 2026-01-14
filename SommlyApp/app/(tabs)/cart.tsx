@@ -267,10 +267,6 @@ export default function CartScreen() {
           }
         }
 
-        Alert.alert(
-          "Timeout réseau",
-          `Impossible de se connecter à: ${url}\n\nVérifiez que:\n1. Le serveur backend est démarré (port 4242)\n2. Vous êtes sur le même réseau WiFi\n3. Le firewall n'est pas bloqué\n\nEssayez de redémarrer le serveur backend.`
-        );
         throw new Error("Network timeout");
       }
 
@@ -289,10 +285,6 @@ export default function CartScreen() {
         }
       }
 
-      Alert.alert(
-        "Network error",
-        `URL: ${url}\n\nErreur: ${message}\n\nVérifiez que le serveur backend est démarré.\n\nCommande: cd backend && npm start`
-      );
       throw err;
     }
   }
