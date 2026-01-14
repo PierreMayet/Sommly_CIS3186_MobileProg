@@ -90,7 +90,6 @@ export default function HomeScreen() {
           <View style={styles.promoCard}>
             <Text style={styles.promoTitle}>Smart Cellar System</Text>
             <Text style={styles.promoText}>Connect your sensors to monitor your wine collection remotely.</Text>
-            <Text style={styles.promoLink}>Learn more about IoT packs →</Text>
           </View>
         )}
 
